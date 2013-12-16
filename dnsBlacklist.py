@@ -4,6 +4,7 @@ import hashlib
 import urllib
 import os
 import gzip
+import subprocess
 
 def readFile(txtFile):
 	f = open(txtFile, 'r')
@@ -17,13 +18,35 @@ def parseLines(lines):
 		matchObj = re.match( r'.*\|.*//(.*):|/{1}', lines[i], re.M|re.I)
 		if matchObj:
 			url=matchObj.group(1)
-			row = getCurserForExistingUrl(url)
-			if row == 1:
+			if getCurserForExistingUrl(url) == 1:
 				print "already exist"
 			else:
 				insertEntryToSql(url,x,lines[i])
 				print "Add URL to database successfully!!"
 				x+=1
+
+
+def parseLinesLogFiles():
+	x=getLastSqlID()+1
+
+	cmd= [ 'egrep -E \'torrent|transmis|vuze|bitcomet|bitlord|donkey|shareaza\' logs/*']
+	#cmd1 = ['grep "query\[A\]" | awk  -F" " \'{print $8}\'']
+	cmd1 = ['awk  -F" " \'{print $8}\'']
+	egrep = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
+	lines = egrep.stdout.readlines()
+	#awk  = subprocess.Popen(cmd1,shell=True,stdin=lines, stdout=subprocess.PIPE)
+	#print lines
+	for line in lines:
+		line = line.split(" ")
+		lineToSave = line[7],line[8],line[9].rstrip()
+		url=line[7]
+		if getCurserForExistingUrl(url) == 1:
+			print "already exist!!!!"
+		else:
+			#insertEntryToSql(url,x,lines[i])
+			print "add URL to db!!"
+			x+=1
+			print "test:", url
 	
 
 def getLastSqlID():
@@ -41,7 +64,6 @@ def getCurserForExistingUrl(url):
 	conn = sqlite3.connect('blacklist.db')
 	count = conn.execute("SELECT url FROM BLACKLIST WHERE url = ?", (url,)).fetchall()
 	conn.close()
-
 	if len(count) >= 1:
 		return 1
 	else:
@@ -81,6 +103,14 @@ def createDnsmasqBlacklistFile():
 	blackistFile.close()
 
 
+
+
+#print parseLinesLogFiles()
+#quit()
+#dnsmasqPid=subprocess.call('ssh -t root@isp  ps  |grep dnsmasq|awk -F" " \'{print $1}\'', shell=True)
+#ssh=subprocess.call('ssh -t root@isp  ps  |grep dnsmasq|awk -F" " \'{print $1}\'', shell=True)
+
+
 try:
    with open('blacklist.db'):
    	print "Check for DB .... . Exist "
@@ -95,6 +125,18 @@ except IOError:
    print "Table created successfully";
    conn.close()
 
+
+###### TODO 
+#### import scp
+# client = scp.Client(host=host, user=user, keyfile=keyfile)
+# # or
+# client = scp.Client(host=host, user=user)
+# client.use_system_keys()
+# # or
+# client = scp.Client(host=host, user=user, password=password)
+# client.transfer('/etc/local/filename', '/etc/remote/filename')
+
+### restart dnsmasq
 
 
 
